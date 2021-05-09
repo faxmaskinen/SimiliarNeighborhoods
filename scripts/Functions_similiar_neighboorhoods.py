@@ -10,6 +10,10 @@ import json # library to handle JSON files
 import random # library for random number generation
 import time  
 
+
+
+
+
 def get_coordinates_neighborhoods(df_neighborhoods, city_string, search_col_string):
     # Coordinate arrays
     lat_to_list=np.array([])
@@ -17,7 +21,7 @@ def get_coordinates_neighborhoods(df_neighborhoods, city_string, search_col_stri
     toolbar_width = 40
 
     print("")
-    print( "progress : Get all Coordinates")
+    print( "Progress : Get all Coordinates")
 
     for i, neigh in enumerate(df_neighborhoods[search_col_string]):
         # initialize your variable to None
@@ -26,19 +30,46 @@ def get_coordinates_neighborhoods(df_neighborhoods, city_string, search_col_stri
         locator = Nominatim(user_agent="myGeocoder")
         count = 0
 
+        if (i % 10 == 0) and (i != 0):
+            # print("Modulus yeeeeeah") 
+            time.sleep(10)                  # Let the API rest, it is a bit grumpy
         # loop until you get the coordinates
         while(lng_coords is None):
-            location = locator.geocode('{},'+ city_string.format(neigh))
+            location = locator.geocode('{}, {} '.format(neigh, df_neighborhoods['Borough'].iloc[i])+ city_string)
             try:
                 lat_coords = location.latitude
                 lng_coords = location.longitude
+                # print("neigh ",str(neigh)," lat ",str(lat_coords)," long ",str(lng_coords))
  
             except:
                 lat_coords =None
                 lng_coords =None
 
-            if count == 3:  # the limit
+            # if count == 50:
+            #     locator = Nominatim(user_agent="myGeocoder")
+
+            # if count == 30:
+            #     locator = Nominatim(user_agent="catuserbot")
+
+            # if count == 65:
+            #     locator = Nominatim(user_agent="SkittBot")
+
+            # if count == 80:
+            #     locator = Nominatim(user_agent="kino-bot")
+
+            # if count == 90:
+            #     locator = Nominatim(user_agent="TGmeetup")
+
+                
+
+            if count == 50:  # the limit
+                time.sleep(2)
+                print(str(neigh),"  count = 50: TimedOut. Number "+str(i))
+                lat_coords =None
+                lng_coords =None
                 break
+                
+
 
             # print(neigh, count)
 
@@ -46,7 +77,7 @@ def get_coordinates_neighborhoods(df_neighborhoods, city_string, search_col_stri
 
         lat_to_list= np.append(lat_to_list, lat_coords)
         long_to_list= np.append(long_to_list, lng_coords)
-        update_progress(round(i/df_neighborhoods.shape[0],1))
+        update_progress(round(i/(df_neighborhoods.shape[0]+10),2))
 
     print("Done!")
     return lat_to_list, long_to_list
@@ -54,7 +85,7 @@ def get_coordinates_neighborhoods(df_neighborhoods, city_string, search_col_stri
 
 
 
-def getNearbyVenues(names, latitudes, longitudes, radius=500):
+def getNearbyVenues(names, latitudes, longitudes, CLIENT_ID, CLIENT_SECRET, VERSION= '20180605',  LIMIT=100,  radius=500):
     
     venues_list=[]
 
@@ -116,6 +147,7 @@ def update_progress(progress): # Thanks Brian (https://stackoverflow.com/questio
     sys.stdout.write(text)
     sys.stdout.flush()
 
+
 def get_weather_data(df_neighborhoods, openweathermap_api_key):
     weather_mean_temp=np.array([])
     weather_most_freq_weather=np.array([])
@@ -129,7 +161,7 @@ def get_weather_data(df_neighborhoods, openweathermap_api_key):
         weather_data = requests.get(url).json()
         
         # there is a constraint that MAX 60 api-calls per minutes can be made, thus we make lower number of calls per minute by waiting
-        time.sleep(2)
+        time.sleep(4)
         
         # get weather data for last 5 days and get mean ans most freq
         weather_last_5=[]
@@ -142,7 +174,10 @@ def get_weather_data(df_neighborhoods, openweathermap_api_key):
         # calculate mean temp and most frequent weather, the last 5 days
         mean_temperature = df_weather_last_5['temp'].mean()
         most_freq_weather = df_weather_last_5['weather'].value_counts()[:1].index[0]
-        second_most_freq_weather = df_weather_last_5['weather'].value_counts()[:2].index[1]
+        try:
+            second_most_freq_weather = df_weather_last_5['weather'].value_counts()[:2].index[1]
+        except: # when all weathers are the same, use the most frequent weather as second most frequent
+            second_most_freq_weather = df_weather_last_5['weather'].value_counts()[:1].index[0] 
         # print(second_most_freq_weather)
         
         weather_mean_temp = np.append(weather_mean_temp, mean_temperature)
